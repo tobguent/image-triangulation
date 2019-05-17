@@ -1,0 +1,156 @@
+##
+##  Created on: Mai 27, 2010
+##      Author: martinez
+##
+
+### This file is meant to be included in subdirs containing libraries and
+### executable source files with variable 'current_dir_lists' set.
+### The variables 'folder_package_depend', 'folder_link_libs',
+### 'folder_include_dirs' and 'folder_lib_depend' should be set as
+### required. 'folder_lib_type' defaults to SHARED if not set.
+### Cuda executables and libs are build if folder_enable_cuda is set.
+### Sources in 'folder_src_exclude' are excluded from beeing build.
+### Additional sources to consider can be given in the
+### 'folder_additional_headers' and 'folder_additional_sources'
+### variables.
+
+### FOLDER GENERIC
+
+#check if dependencies on other packages are given for this dir
+#construct library name (quite ugly imho)
+FILE(RELATIVE_PATH lib_name ${CMAKE_HOME_DIRECTORY} ${current_dir_lists})
+GET_FILENAME_COMPONENT(lib_name ${lib_name} PATH)
+
+#Handle cases where no subdir to the main project exists
+IF(NOT lib_name) 
+  SET(lib_name "${PROJECT_NAME}")
+ELSE()
+  FILE(TO_CMAKE_PATH ${lib_name} lib_name)
+  STRING(REPLACE "/" "_" lib_name_plain ${lib_name})
+  SET(lib_name "${PROJECT_NAME}_${lib_name_plain}")
+ENDIF()
+
+SET(PACKAGE_DEPEND TRUE)
+FOREACH(item ${folder_package_depend})
+   IF(PACKAGE_DEPEND AND item)
+     SET(PACKAGE_DEPEND TRUE)
+   ELSE()
+     SET(PACKAGE_DEPEND FALSE)
+   ENDIF()
+ENDFOREACH()
+
+IF(NOT PACKAGE_DEPEND)
+   MESSAGE(STATUS "Not building " ${lib_name_plain})
+ELSE()
+   MESSAGE(STATUS "Building " ${lib_name_plain})
+
+   IF(BUILD_INTO_SRC_SUBFOLDERS)
+     SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/${CMAKE_SYSTEM})
+     SET(LIBRARY_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/${CMAKE_SYSTEM})
+   ENDIF()
+   
+   FILE(GLOB folder_headers *.hh *.hpp *.h)
+   FILE(GLOB folder_headers_detail detail/*.hh detail/*.hpp detail/*.h)
+   IF(NOT folder_enable_cuda)
+     FILE(GLOB folder_sources *.cc *.cpp *.c)
+     FILE(GLOB folder_sources_detail detail/*.cc detail/*.cpp detail/*.c)
+   ELSE()
+     FILE(GLOB folder_sources *.cc *.cpp *.c *.cu)
+     FILE(GLOB folder_sources_detail detail/*.cc detail/*.cpp detail/*.c detail/*.cu)
+   ENDIF()
+   
+   FOREACH(exclude_item ${folder_src_exclude})
+   	 LIST(REMOVE_ITEM folder_sources ${CMAKE_CURRENT_SOURCE_DIR}/${exclude_item})
+   	 LIST(REMOVE_ITEM folder_sources_detail ${CMAKE_CURRENT_SOURCE_DIR}/${exclude_item})
+   ENDFOREACH()
+   
+   IF(folder_enable_qtautomoc)
+     SET(CMAKE_AUTOMOC TRUE)
+     #MESSAGE(STATUS "Automocing ${CMAKE_CURRENT_SOURCE_DIR}")
+   ENDIF()
+
+   LIST(APPEND folder_headers_all ${folder_headers} ${folder_headers_detail} ${folder_additional_headers})
+   LIST(APPEND folder_sources_all ${folder_sources} ${folder_sources_detail} ${folder_additional_sources})
+
+   #construct other library dependencies
+   IF(folder_lib_depend)
+     FOREACH(item ${folder_lib_depend})
+       SET(lib_depend_name "${PROJECT_NAME}_${item}")
+       STRING(REPLACE "/" "_" lib_depend_name ${lib_depend_name})
+       SET(libraries_depend ${libraries_depend} ${lib_depend_name})
+       #MESSAGE(STATUS "lib_depend_name " ${lib_depend_name})
+     ENDFOREACH()
+   ENDIF()
+   
+   #check if file is supposed to be a standalone executable
+   FOREACH(item ${folder_sources})
+     FILE(READ ${item} file_content)
+
+     #regex brought from tmk
+     IF(file_content MATCHES "[ \t\n]+WinMain[ \t\n]*\\(")
+       LIST(APPEND folder_exe_sources ${item})
+     ELSE()
+       LIST(APPEND folder_lib_sources ${item})
+     ENDIF()
+   ENDFOREACH()
+   
+   LIST(APPEND folder_lib_sources_all ${folder_lib_sources} ${folder_sources_detail})
+      
+   SOURCE_GROUP("Exe Source Files" FILES ${folder_exe_sources})
+   SOURCE_GROUP("Lib Source Files" FILES ${folder_lib_sources})
+   SOURCE_GROUP("Lib Source Files\\detail" FILES ${folder_sources_detail})
+   SOURCE_GROUP("Header Files" FILES ${folder_headers})
+   SOURCE_GROUP("Header Files\\detail" FILES ${folder_headers_detail})
+   
+   #MESSAGE(STATUS "All Source Files ${folder_sources_all}")
+   #MESSAGE(STATUS "Exe Source Files ${folder_exe_sources}")
+   #MESSAGE(STATUS "Lib Source Files ${folder_lib_sources}")
+   #MESSAGE(STATUS "Lib Source Files\\detail ${folder_sources_detail}")
+   #MESSAGE(STATUS "Header Files ${folder_headers}")
+   #MESSAGE(STATUS "Header Files\\detail ${folder_headers_detail}")
+   
+   INCLUDE_DIRECTORIES(${folder_include_dirs})
+   
+   #MESSAGE(STATUS "LINK" ${folder_link_libs})
+   
+   IF(folder_lib_sources_all)
+     IF(NOT folder_lib_type)
+       #IF (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+       #  SET(folder_lib_type STATIC)
+       #ELSE()
+       #  SET(folder_lib_type SHARED)
+       #ENDIF()
+       SET(folder_lib_type SHARED)
+     ENDIF()
+     
+     IF(NOT folder_enable_cuda)
+       ADD_LIBRARY(${lib_name} ${folder_lib_type} ${folder_lib_sources} ${folder_headers})
+     ELSE()
+       CUDA_ADD_LIBRARY(${lib_name} ${folder_lib_type} ${folder_lib_sources} ${folder_headers})
+     ENDIF()
+     
+     TARGET_LINK_LIBRARIES(${lib_name} ${folder_link_libs} ${libraries_depend})
+
+     IF(libraries_depend)
+         ADD_DEPENDENCIES(${lib_name} ${libraries_depend})
+     ENDIF()
+   ENDIF()
+
+   FOREACH(item ${folder_exe_sources})
+     GET_FILENAME_COMPONENT(exename ${item} NAME_WE)
+     
+     IF(NOT folder_enable_cuda)
+       ADD_EXECUTABLE(${exename} WIN32 ${item})
+     ELSE()
+       CUDA_ADD_EXECUTABLE(${exename} ${item})
+     ENDIF()
+     
+     IF(folder_lib_sources)
+       TARGET_LINK_LIBRARIES(${exename} ${folder_link_libs} ${lib_name} ${libraries_depend})
+     ELSE()
+       TARGET_LINK_LIBRARIES(${exename} ${folder_link_libs} ${libraries_depend})
+     ENDIF()
+   ENDFOREACH()
+   
+ENDIF()
+# :mode=cmake:
