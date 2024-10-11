@@ -1,12 +1,22 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.0)
+include(FetchContent)
 
 PROJECT(imagetri CXX C)
 
 SET (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 
-FIND_PACKAGE(Eigen3 REQUIRED)
+FetchContent_Declare(eigen3
+        GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
+        GIT_TAG 9441d94dccccd5db8d64179516fdc5b53994a047
+        )
+FetchContent_Populate(eigen3) # we do not need add_subdirectory() here since we only include the header
+
+add_library(eigen INTERFACE)
+add_library(eigen3::eigen ALIAS eigen)
+target_include_directories(eigen INTERFACE ${eigen3_SOURCE_DIR})
+
+
 FIND_PACKAGE(AntTweakBar REQUIRED)
-FIND_PACKAGE(DirectX REQUIRED)
 FIND_PACKAGE(Matlab REQUIRED)
 
 SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})

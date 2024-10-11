@@ -1,6 +1,6 @@
 SET(folder_package_depend ${ANTTWEAKBAR_FOUND} ${MATLAB_FOUND})
-SET(folder_link_libs ${ANTTWEAKBAR_LIBRARY} ${DirectX_D3D11_LIBRARY} ${DirectX_D3DCOMPILER_LIBRARY} ${DirectX_DXGI_LIBRARY} ${DirectX_D3DX11_LIBRARY} ${MATLAB_ENG_LIBRARY} ${MATLAB_MX_LIBRARY})
-SET(folder_include_dirs ${ANTTWEAKBAR_INCLUDE_DIR} ${EIGEN3_INCLUDE_DIR} ${MATLAB_INCLUDE_DIR})
+SET(folder_link_libs ${ANTTWEAKBAR_LIBRARY} d3d11.lib dxgi.lib D3DCompiler.lib ${PROJECT_SOURCE_DIR}/extern/x64/d3dx11.lib ${MATLAB_ENG_LIBRARY} ${MATLAB_MX_LIBRARY} eigen3::eigen)
+SET(folder_include_dirs ${ANTTWEAKBAR_INCLUDE_DIR} ${MATLAB_INCLUDE_DIR})
 SET(folder_lib_depend effect-framework)
 
 SET(current_dir_lists ${CMAKE_CURRENT_LIST_FILE})
